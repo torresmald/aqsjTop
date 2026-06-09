@@ -59,13 +59,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <v-container class="py-6" max-width="800">
-    <div class="mb-6">
-      <h1 class="text-h4 font-weight-bold mb-2">Resultados</h1>
-      <p class="text-medium-emphasis">Clasificación acumulada de todos los votos.</p>
+  <v-container class="page-container" max-width="800">
+    <div class="page-header">
+      <h1 class="page-title">Resultados</h1>
+      <p class="page-subtitle">Clasificación acumulada de todos los votos.</p>
     </div>
 
-    <v-card v-if="loading" class="pa-6">
+    <v-card v-if="loading" class="page-card">
       <v-progress-linear indeterminate color="primary" />
       <p class="text-center mt-4 text-medium-emphasis">Cargando resultados...</p>
     </v-card>
@@ -75,23 +75,117 @@ onMounted(async () => {
     <template v-else>
       <v-alert type="info" variant="tonal" class="mb-4" :text="`${totalVotes} votos registrados`" />
 
-      <v-card v-if="topResults.length === 0" class="pa-6 text-center text-medium-emphasis">
+      <v-card v-if="topResults.length === 0" class="page-card text-center text-medium-emphasis">
         Aún no hay votos. ¡Sé el primero en participar!
         <div class="mt-4">
-          <v-btn color="primary" variant="flat" to="/">Votar ahora</v-btn>
+          <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" to="/">Votar ahora</v-btn>
         </div>
       </v-card>
 
-      <v-card v-else>
+      <v-card v-else class="results-card">
         <v-list lines="two">
           <v-list-item
             v-for="(result, index) in topResults"
             :key="result.gameId"
-            :title="`${index + 1}. ${result.gameName}`"
-            :subtitle="`${result.totalPoints} puntos · ${result.votes} apariciones`"
-          />
+            class="results-item"
+          >
+            <template #prepend>
+              <div class="results-item__rank" :class="{ 'results-item__rank--top': index < 3 }">
+                {{ index + 1 }}
+              </div>
+            </template>
+            <v-list-item-title class="results-item__name">{{ result.gameName }}</v-list-item-title>
+            <v-list-item-subtitle>
+              {{ result.totalPoints }} pts · {{ result.votes }} votos
+            </v-list-item-subtitle>
+          </v-list-item>
         </v-list>
       </v-card>
     </template>
   </v-container>
 </template>
+
+<style scoped>
+.page-container {
+  padding: 16px 12px 24px;
+}
+
+@media (min-width: 600px) {
+  .page-container {
+    padding: 24px 16px 32px;
+  }
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 600px) {
+  .page-title {
+    font-size: 2rem;
+  }
+}
+
+.page-card {
+  padding: 16px;
+}
+
+@media (min-width: 600px) {
+  .page-card {
+    padding: 24px;
+  }
+}
+
+.results-card {
+  overflow: hidden;
+}
+
+.results-item {
+  padding: 12px 16px !important;
+}
+
+.results-item__rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.results-item__rank--top {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+
+.results-item__name {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.3 !important;
+  font-size: 0.95rem !important;
+}
+
+@media (min-width: 600px) {
+  .results-item__name {
+    font-size: 1rem !important;
+  }
+}
+</style>

@@ -109,13 +109,25 @@ async function submitVote() {
   }
 }
 
+const stepProgress = computed(() => {
+  if (step.value === 'vote') return 33
+  if (step.value === 'confirm') return 66
+  return 100
+})
+
+const stepLabel = computed(() => {
+  if (step.value === 'vote') return 'Elegir juegos'
+  if (step.value === 'confirm') return 'Confirmar'
+  return 'Telegram'
+})
+
 onMounted(() => {
   votesStore.loadVotingConfig()
 })
 </script>
 
 <template>
-  <v-container class="py-6" max-width="800">
+  <v-container class="page-container" max-width="800">
     <v-card v-if="!votesStore.configLoaded" class="pa-6">
       <v-progress-linear indeterminate color="primary" />
       <p class="text-center mt-4 text-medium-emphasis">Cargando votación...</p>
@@ -134,29 +146,34 @@ onMounted(() => {
         <p class="text-medium-emphasis mb-4">
           Gracias por participar con {{ formatTelegram(telegram) }}.
         </p>
-        <v-btn color="primary" variant="flat" to="/resultados">Ver resultados</v-btn>
+        <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" to="/resultados">
+          Ver resultados
+        </v-btn>
       </v-card>
     </template>
 
     <template v-else>
-      <div class="mb-6">
-        <h1 class="text-h4 font-weight-bold mb-2">Tu Top 10</h1>
-        <p class="text-medium-emphasis">
+      <div class="page-header">
+        <h1 class="page-title">Tu Top 10</h1>
+        <p class="page-subtitle">
           Elige 10 juegos distintos. El 1.º puesto vale 10 puntos y el 10.º vale 1 punto.
         </p>
       </div>
 
-      <v-stepper :model-value="step === 'vote' ? 1 : step === 'confirm' ? 2 : 3" class="mb-6">
-        <v-stepper-header>
-          <v-stepper-item :value="1" title="Elegir juegos" />
-          <v-divider />
-          <v-stepper-item :value="2" title="Confirmar" />
-          <v-divider />
-          <v-stepper-item :value="3" title="Telegram" />
-        </v-stepper-header>
-      </v-stepper>
+      <div class="step-progress mb-4">
+        <div class="step-progress__labels">
+          <span class="step-progress__current">Paso {{ step === 'vote' ? 1 : step === 'confirm' ? 2 : 3 }} de 3</span>
+          <span class="step-progress__name">{{ stepLabel }}</span>
+        </div>
+        <v-progress-linear :model-value="stepProgress" color="primary" rounded height="6" />
+        <div class="step-progress__dots d-none d-sm-flex">
+          <span :class="{ active: step === 'vote' }">Juegos</span>
+          <span :class="{ active: step === 'confirm' }">Confirmar</span>
+          <span :class="{ active: step === 'telegram' }">Telegram</span>
+        </div>
+      </div>
 
-      <v-card v-if="step === 'vote'" class="pa-4">
+      <v-card v-if="step === 'vote'" class="page-card">
         <v-alert
           v-if="hasDuplicates"
           type="error"
@@ -166,15 +183,11 @@ onMounted(() => {
           text="Cada juego solo puede aparecer una vez en tu Top 10."
         />
 
-        <div class="d-flex flex-column ga-3">
-          <div
-            v-for="(position, index) in positions"
-            :key="position"
-            class="d-flex align-center ga-3"
-          >
-            <div class="text-no-wrap" style="min-width: 110px">
-              <span class="font-weight-bold">{{ position }}º</span>
-              <span class="text-medium-emphasis"> · {{ pointsForPosition(position) }} pts</span>
+        <div class="vote-rows">
+          <div v-for="(position, index) in positions" :key="position" class="vote-row">
+            <div class="vote-row__badge">
+              <span class="vote-row__position">{{ position }}º</span>
+              <span class="vote-row__points">{{ pointsForPosition(position) }} pts</span>
             </div>
 
             <v-autocomplete
@@ -183,19 +196,23 @@ onMounted(() => {
               :item-title="gameLabel"
               item-value="id"
               return-object
-              label="Buscar juego"
-              placeholder="Escribe para buscar..."
+              :label="`Puesto ${position}`"
+              placeholder="Buscar juego..."
               clearable
               hide-details
+              density="comfortable"
+              class="vote-row__input"
               :error="rankings[index] !== null && duplicateGameIds.has(rankings[index]!.id)"
             />
           </div>
         </div>
 
-        <div class="d-flex justify-end mt-6">
+        <div class="action-bar action-bar--end">
           <v-btn
             color="primary"
             variant="flat"
+            block
+            class="d-sm-inline-flex"
             :disabled="!canContinueToConfirm"
             @click="goToConfirm"
           >
@@ -204,28 +221,35 @@ onMounted(() => {
         </div>
       </v-card>
 
-      <v-card v-else-if="step === 'confirm'" class="pa-4">
-        <h2 class="text-h6 font-weight-bold mb-4">Revisa tu Top 10</h2>
+      <v-card v-else-if="step === 'confirm'" class="page-card">
+        <h2 class="section-title">Revisa tu Top 10</h2>
 
-        <v-list lines="two" class="mb-4">
+        <v-list lines="two" class="confirm-list mb-4">
           <v-list-item
             v-for="ranking in voteRankings"
             :key="ranking.position"
-            :title="`${ranking.position}º · ${ranking.gameName}`"
-            :subtitle="`${ranking.points} puntos`"
-          />
+            class="confirm-list__item"
+          >
+            <template #prepend>
+              <div class="confirm-list__rank">{{ ranking.position }}</div>
+            </template>
+            <v-list-item-title class="confirm-list__name">{{ ranking.gameName }}</v-list-item-title>
+            <v-list-item-subtitle>{{ ranking.points }} puntos</v-list-item-subtitle>
+          </v-list-item>
         </v-list>
 
-        <div class="d-flex justify-space-between">
-          <v-btn variant="text" @click="step = 'vote'">Volver</v-btn>
-          <v-btn color="primary" variant="flat" @click="goToTelegram">Confirmar</v-btn>
+        <div class="action-bar">
+          <v-btn variant="text" block class="d-sm-inline-flex" @click="step = 'vote'">Volver</v-btn>
+          <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" @click="goToTelegram">
+            Confirmar
+          </v-btn>
         </div>
       </v-card>
 
-      <v-card v-else class="pa-4">
-        <h2 class="text-h6 font-weight-bold mb-2">Usuario de Telegram</h2>
-        <p class="text-medium-emphasis mb-4">
-          Introduce tu usuario de Telegram con la @ incluida. Solo se permite un voto por usuario.
+      <v-card v-else class="page-card">
+        <h2 class="section-title">Usuario de Telegram</h2>
+        <p class="page-subtitle mb-4">
+          Introduce tu usuario con la @ incluida. Solo se permite un voto por usuario.
         </p>
 
         <v-alert
@@ -243,14 +267,21 @@ onMounted(() => {
           prepend-inner-icon="mdi-at"
           :error-messages="telegramError"
           :disabled="submitting"
+          autocomplete="username"
+          inputmode="text"
+          density="comfortable"
           @keyup.enter="submitVote"
         />
 
-        <div class="d-flex justify-space-between">
-          <v-btn variant="text" :disabled="submitting" @click="step = 'confirm'">Volver</v-btn>
+        <div class="action-bar">
+          <v-btn variant="text" block class="d-sm-inline-flex" :disabled="submitting" @click="step = 'confirm'">
+            Volver
+          </v-btn>
           <v-btn
             color="primary"
             variant="flat"
+            block
+            class="d-sm-inline-flex"
             :loading="submitting"
             :disabled="!isValidTelegram(telegram)"
             @click="submitVote"
@@ -262,3 +293,192 @@ onMounted(() => {
     </template>
   </v-container>
 </template>
+
+<style scoped>
+.page-container {
+  padding: 16px 12px 24px;
+}
+
+@media (min-width: 600px) {
+  .page-container {
+    padding: 24px 16px 32px;
+  }
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.page-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 600px) {
+  .page-title {
+    font-size: 2rem;
+  }
+}
+
+.page-card {
+  padding: 16px;
+}
+
+@media (min-width: 600px) {
+  .page-card {
+    padding: 24px;
+  }
+}
+
+.step-progress__labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+}
+
+.step-progress__current {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.step-progress__name {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-align: right;
+}
+
+.step-progress__dots {
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+}
+
+.step-progress__dots .active {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+
+.vote-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vote-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+@media (min-width: 600px) {
+  .vote-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+}
+
+.vote-row__badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.vote-row__position {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.vote-row__points {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+}
+
+.vote-row__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm-list__item {
+  padding-inline: 0 !important;
+}
+
+.confirm-list__rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-right: 12px;
+}
+
+.confirm-list__name {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.3 !important;
+}
+
+.action-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.action-bar--end {
+  align-items: stretch;
+}
+
+@media (min-width: 600px) {
+  .action-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .action-bar--end {
+    justify-content: flex-end;
+  }
+
+  .action-bar .v-btn {
+    width: auto !important;
+    min-width: 120px;
+  }
+}
+</style>
