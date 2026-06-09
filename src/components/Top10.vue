@@ -546,7 +546,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* padding: 12px 16px; */
+  padding: 12px 16px;
   background: rgb(var(--v-theme-surface));
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);

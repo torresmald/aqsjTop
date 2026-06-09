@@ -16,7 +16,7 @@ const errorMessage = ref('')
 const totalVotes = ref(0)
 const scores = ref<GameScore[]>([])
 
-const topResults = computed(() => scores.value.slice(0, 10))
+const topResults = computed<GameScore[]>(() => scores.value)
 
 function aggregateVotes(votes: Vote[]) {
   const totals = new Map<number, GameScore>()
@@ -78,7 +78,9 @@ onMounted(async () => {
       <v-card v-if="topResults.length === 0" class="page-card text-center text-medium-emphasis">
         Aún no hay votos. ¡Sé el primero en participar!
         <div class="mt-4">
-          <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" to="/">Votar ahora</v-btn>
+          <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" to="/"
+            >Votar ahora</v-btn
+          >
         </div>
       </v-card>
 
