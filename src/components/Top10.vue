@@ -38,6 +38,8 @@ const hasDuplicates = computed(() => duplicateGameIds.value.size > 0)
 
 const canContinueToConfirm = computed(() => isRankingComplete.value && !hasDuplicates.value)
 
+const filledCount = computed(() => rankings.value.filter((game) => game !== null).length)
+
 const voteRankings = computed<VoteRanking[]>(() =>
   rankings.value
     .map((game, index) => {
@@ -127,7 +129,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-container class="page-container" max-width="800">
+  <v-container
+    class="page-container"
+    :class="{
+      'page-container--with-footer':
+        step !== 'success' && votesStore.configLoaded && votesStore.votingOpen,
+    }"
+    max-width="800"
+  >
     <v-card v-if="!votesStore.configLoaded" class="pa-6">
       <v-progress-linear indeterminate color="primary" />
       <p class="text-center mt-4 text-medium-emphasis">Cargando votación...</p>
@@ -162,7 +171,9 @@ onMounted(() => {
 
       <div class="step-progress mb-4">
         <div class="step-progress__labels">
-          <span class="step-progress__current">Paso {{ step === 'vote' ? 1 : step === 'confirm' ? 2 : 3 }} de 3</span>
+          <span class="step-progress__current"
+            >Paso {{ step === 'vote' ? 1 : step === 'confirm' ? 2 : 3 }} de 3</span
+          >
           <span class="step-progress__name">{{ stepLabel }}</span>
         </div>
         <v-progress-linear :model-value="stepProgress" color="primary" rounded height="6" />
@@ -206,19 +217,6 @@ onMounted(() => {
             />
           </div>
         </div>
-
-        <div class="action-bar action-bar--end">
-          <v-btn
-            color="primary"
-            variant="flat"
-            block
-            class="d-sm-inline-flex"
-            :disabled="!canContinueToConfirm"
-            @click="goToConfirm"
-          >
-            Continuar
-          </v-btn>
-        </div>
       </v-card>
 
       <v-card v-else-if="step === 'confirm'" class="page-card">
@@ -237,13 +235,6 @@ onMounted(() => {
             <v-list-item-subtitle>{{ ranking.points }} puntos</v-list-item-subtitle>
           </v-list-item>
         </v-list>
-
-        <div class="action-bar">
-          <v-btn variant="text" block class="d-sm-inline-flex" @click="step = 'vote'">Volver</v-btn>
-          <v-btn color="primary" variant="flat" block class="d-sm-inline-flex" @click="goToTelegram">
-            Confirmar
-          </v-btn>
-        </div>
       </v-card>
 
       <v-card v-else class="page-card">
@@ -272,24 +263,68 @@ onMounted(() => {
           density="comfortable"
           @keyup.enter="submitVote"
         />
-
-        <div class="action-bar">
-          <v-btn variant="text" block class="d-sm-inline-flex" :disabled="submitting" @click="step = 'confirm'">
-            Volver
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            block
-            class="d-sm-inline-flex"
-            :loading="submitting"
-            :disabled="!isValidTelegram(telegram)"
-            @click="submitVote"
-          >
-            Enviar voto
-          </v-btn>
-        </div>
       </v-card>
+
+      <div v-if="step === 'vote'" class="page-footer">
+        <p class="page-footer__hint">
+          <template v-if="hasDuplicates">Hay juegos repetidos</template>
+          <template v-else>{{ filledCount }}/10 puestos completados</template>
+        </p>
+        <v-btn
+          color="primary"
+          variant="flat"
+          size="large"
+          block
+          class="page-footer__btn"
+          :disabled="!canContinueToConfirm"
+          @click="goToConfirm"
+        >
+          Continuar
+        </v-btn>
+      </div>
+
+      <div v-else-if="step === 'confirm'" class="page-footer page-footer--split">
+        <v-btn
+          variant="outlined"
+          size="large"
+          class="page-footer__btn-secondary"
+          @click="step = 'vote'"
+        >
+          Volver
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="flat"
+          size="large"
+          class="page-footer__btn-primary"
+          @click="goToTelegram"
+        >
+          Confirmar
+        </v-btn>
+      </div>
+
+      <div v-else-if="step === 'telegram'" class="page-footer page-footer--split">
+        <v-btn
+          variant="outlined"
+          size="large"
+          class="page-footer__btn-secondary"
+          :disabled="submitting"
+          @click="step = 'confirm'"
+        >
+          Volver
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="flat"
+          size="large"
+          class="page-footer__btn-primary"
+          :loading="submitting"
+          :disabled="!isValidTelegram(telegram)"
+          @click="submitVote"
+        >
+          Enviar voto
+        </v-btn>
+      </div>
     </template>
   </v-container>
 </template>
@@ -299,9 +334,23 @@ onMounted(() => {
   padding: 16px 12px 24px;
 }
 
+.page-container--with-footer {
+  padding-bottom: calc(120px + 56px + env(safe-area-inset-bottom, 0));
+}
+
+@media (min-width: 960px) {
+  .page-container--with-footer {
+    padding-bottom: 100px;
+  }
+}
+
 @media (min-width: 600px) {
   .page-container {
     padding: 24px 16px 32px;
+  }
+
+  .page-container--with-footer {
+    padding-bottom: 100px;
   }
 }
 
@@ -454,31 +503,68 @@ onMounted(() => {
   line-height: 1.3 !important;
 }
 
-.action-bar {
+.page-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0));
+  z-index: 900;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 24px;
+  padding: 12px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.action-bar--end {
-  align-items: stretch;
+.page-footer--split {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
-@media (min-width: 600px) {
-  .action-bar {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
+.page-footer__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
 
-  .action-bar--end {
-    justify-content: flex-end;
-  }
+.page-footer__btn {
+  font-weight: 700;
+  min-height: 48px !important;
+  letter-spacing: 0.02em;
+}
 
-  .action-bar .v-btn {
-    width: auto !important;
-    min-width: 120px;
+.page-footer__btn.v-btn--disabled {
+  opacity: 1 !important;
+  background: rgba(var(--v-theme-primary), 0.38) !important;
+  color: rgba(var(--v-theme-on-primary), 0.85) !important;
+}
+
+.page-footer__btn-primary {
+  flex: 1;
+  font-weight: 700;
+  min-height: 48px !important;
+}
+
+.page-footer__btn-secondary {
+  flex: 0 0 auto;
+  min-height: 48px !important;
+  min-width: 96px;
+}
+
+@media (min-width: 960px) {
+  .page-footer {
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(800px, 100%);
+    padding: 16px 24px;
+    border-radius: 16px 16px 0 0;
   }
 }
 </style>

@@ -107,12 +107,18 @@ onMounted(async () => {
 
 <style scoped>
 .page-container {
-  padding: 16px 12px 24px;
+  padding: 16px 12px calc(24px + 56px + env(safe-area-inset-bottom, 0));
 }
 
 @media (min-width: 600px) {
   .page-container {
-    padding: 24px 16px 32px;
+    padding: 24px 16px calc(32px + 56px + env(safe-area-inset-bottom, 0));
+  }
+}
+
+@media (min-width: 960px) {
+  .page-container {
+    padding-bottom: 32px;
   }
 }
 

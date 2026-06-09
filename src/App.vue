@@ -4,9 +4,9 @@ import BottomNav from '@/components/BottomNav.vue'
 </script>
 
 <template>
-  <v-app>
-    <Header />
-    <v-main class="app-main">
+  <v-app class="app-shell">
+    <v-main scrollable class="app-main">
+      <Header />
       <router-view />
     </v-main>
     <BottomNav />
@@ -14,13 +14,7 @@ import BottomNav from '@/components/BottomNav.vue'
 </template>
 
 <style scoped>
-.app-main {
-  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0));
-}
-
-@media (min-width: 960px) {
-  .app-main {
-    padding-bottom: 0;
-  }
+.app-main :deep(.v-main__scroller) {
+  -webkit-overflow-scrolling: touch;
 }
 </style>
