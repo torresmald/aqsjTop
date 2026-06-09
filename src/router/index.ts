@@ -7,6 +7,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'vote', component: Top10 },
     { path: '/resultados', name: 'results', component: ResultsView },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
