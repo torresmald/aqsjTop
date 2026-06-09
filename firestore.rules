@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidRanking(ranking) {
+      return ranking.keys().hasAll(['gameId', 'gameName', 'position', 'points'])
+        && ranking.gameId is int
+        && ranking.gameName is string
+        && ranking.position is int
+        && ranking.position >= 1
+        && ranking.position <= 10
+        && ranking.points is int
+        && ranking.points == (11 - ranking.position);
+    }
+
+    function isValidRankings(rankings) {
+      return rankings.size() == 10
+        && isValidRanking(rankings[0])
+        && isValidRanking(rankings[1])
+        && isValidRanking(rankings[2])
+        && isValidRanking(rankings[3])
+        && isValidRanking(rankings[4])
+        && isValidRanking(rankings[5])
+        && isValidRanking(rankings[6])
+        && isValidRanking(rankings[7])
+        && isValidRanking(rankings[8])
+        && isValidRanking(rankings[9]);
+    }
+
+    function isValidVote() {
+      return request.resource.data.keys().hasAll(['telegram', 'rankings', 'createdAt'])
+        && request.resource.data.telegram is string
+        && request.resource.data.telegram.matches('^@[a-zA-Z][a-zA-Z0-9_]{4,31}$')
+        && isValidRankings(request.resource.data.rankings);
+    }
+
+    match /votes/{username} {
+      allow read: if true;
+      allow create: if username == request.resource.data.telegram.lower().replace('@', '')
+        && !exists(/databases/$(database)/documents/votes/$(username))
+        && isValidVote();
+      allow update, delete: if false;
+    }
+
+    match /config/voting {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
