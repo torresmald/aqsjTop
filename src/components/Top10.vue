@@ -217,6 +217,23 @@ onMounted(() => {
             />
           </div>
         </div>
+
+        <div class="action-bar action-bar--desktop d-none d-md-flex">
+          <p class="action-bar__hint">
+            <template v-if="hasDuplicates">Hay juegos repetidos</template>
+            <template v-else>{{ filledCount }}/10 puestos completados</template>
+          </p>
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="large"
+            class="action-bar__btn"
+            :disabled="!canContinueToConfirm"
+            @click="goToConfirm"
+          >
+            Continuar
+          </v-btn>
+        </div>
       </v-card>
 
       <v-card v-else-if="step === 'confirm'" class="page-card">
@@ -235,6 +252,11 @@ onMounted(() => {
             <v-list-item-subtitle>{{ ranking.points }} puntos</v-list-item-subtitle>
           </v-list-item>
         </v-list>
+
+        <div class="action-bar action-bar--desktop d-none d-md-flex">
+          <v-btn variant="outlined" size="large" @click="step = 'vote'">Volver</v-btn>
+          <v-btn color="primary" variant="flat" size="large" @click="goToTelegram">Confirmar</v-btn>
+        </div>
       </v-card>
 
       <v-card v-else class="page-card">
@@ -263,9 +285,25 @@ onMounted(() => {
           density="comfortable"
           @keyup.enter="submitVote"
         />
+
+        <div class="action-bar action-bar--desktop d-none d-md-flex">
+          <v-btn variant="outlined" size="large" :disabled="submitting" @click="step = 'confirm'">
+            Volver
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="large"
+            :loading="submitting"
+            :disabled="!isValidTelegram(telegram)"
+            @click="submitVote"
+          >
+            Enviar voto
+          </v-btn>
+        </div>
       </v-card>
 
-      <div v-if="step === 'vote'" class="page-footer">
+      <div v-if="step === 'vote'" class="page-footer d-md-none">
         <p class="page-footer__hint">
           <template v-if="hasDuplicates">Hay juegos repetidos</template>
           <template v-else>{{ filledCount }}/10 puestos completados</template>
@@ -283,7 +321,7 @@ onMounted(() => {
         </v-btn>
       </div>
 
-      <div v-else-if="step === 'confirm'" class="page-footer page-footer--split">
+      <div v-else-if="step === 'confirm'" class="page-footer page-footer--split d-md-none">
         <v-btn
           variant="outlined"
           size="large"
@@ -303,7 +341,7 @@ onMounted(() => {
         </v-btn>
       </div>
 
-      <div v-else-if="step === 'telegram'" class="page-footer page-footer--split">
+      <div v-else-if="step === 'telegram'" class="page-footer page-footer--split d-md-none">
         <v-btn
           variant="outlined"
           size="large"
@@ -338,19 +376,15 @@ onMounted(() => {
   padding-bottom: calc(120px + 56px + env(safe-area-inset-bottom, 0));
 }
 
-@media (min-width: 960px) {
-  .page-container--with-footer {
-    padding-bottom: 100px;
-  }
-}
-
 @media (min-width: 600px) {
   .page-container {
     padding: 24px 16px 32px;
   }
+}
 
+@media (min-width: 960px) {
   .page-container--with-footer {
-    padding-bottom: 100px;
+    padding-bottom: 32px;
   }
 }
 
@@ -512,7 +546,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 16px;
+  /* padding: 12px 16px; */
   background: rgb(var(--v-theme-surface));
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
@@ -556,15 +590,24 @@ onMounted(() => {
   min-width: 96px;
 }
 
-@media (min-width: 960px) {
-  .page-footer {
-    bottom: 0;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    width: min(800px, 100%);
-    padding: 16px 24px;
-    border-radius: 16px 16px 0 0;
-  }
+.action-bar--desktop {
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.action-bar__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.action-bar__btn {
+  font-weight: 700;
+  min-width: 160px;
 }
 </style>
