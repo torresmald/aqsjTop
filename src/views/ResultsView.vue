@@ -2,14 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useConfigStore } from '@/stores/config'
 import type { Vote } from '@/interfaces/vote'
+import { aggregateVotes, type GameScore } from '@/utils/gameAliases'
 
-interface GameScore {
-  gameId: number
-  gameName: string
-  totalPoints: number
-  votes: number
-}
+const configStore = useConfigStore()
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -18,38 +15,16 @@ const scores = ref<GameScore[]>([])
 
 const topResults = computed<GameScore[]>(() => scores.value)
 
-function aggregateVotes(votes: Vote[]) {
-  const totals = new Map<number, GameScore>()
-
-  for (const vote of votes) {
-    for (const ranking of vote.rankings) {
-      const current = totals.get(ranking.gameId)
-      if (current) {
-        current.totalPoints += ranking.points
-        current.votes += 1
-      } else {
-        totals.set(ranking.gameId, {
-          gameId: ranking.gameId,
-          gameName: ranking.gameName,
-          totalPoints: ranking.points,
-          votes: 1,
-        })
-      }
-    }
-  }
-
-  return [...totals.values()].sort((a, b) => {
-    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
-    return a.gameName.localeCompare(b.gameName, 'es')
-  })
-}
-
 onMounted(async () => {
   try {
+    if (!configStore.loaded) {
+      await configStore.load()
+    }
+
     const snapshot = await getDocs(collection(db, 'votes'))
     const votes = snapshot.docs.map((doc) => doc.data() as Vote)
     totalVotes.value = votes.length
-    scores.value = aggregateVotes(votes)
+    scores.value = aggregateVotes(votes, configStore.gameAliases)
   } catch {
     errorMessage.value = 'No se pudieron cargar los resultados.'
   } finally {

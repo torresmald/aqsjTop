@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Vote, VoteRanking, VotingConfig } from '@/interfaces/vote'
+import type { Vote, VoteRanking } from '@/interfaces/vote'
+import { normalizeRankings } from '@/utils/gameAliases'
 import { formatTelegram, normalizeTelegram } from '@/utils/telegram'
+import { useConfigStore } from '@/stores/config'
 
 export class VoteError extends Error {
   constructor(
@@ -15,31 +17,17 @@ export class VoteError extends Error {
 }
 
 export const useVotesStore = defineStore('votes', {
-  state: () => ({
-    votingOpen: true,
-    configLoaded: false,
-  }),
   actions: {
-    async loadVotingConfig() {
-      try {
-        const configRef = doc(db, 'config', 'voting')
-        const snapshot = await getDoc(configRef)
-        const data = snapshot.data() as VotingConfig | undefined
-        this.votingOpen = data?.open ?? true
-      } catch {
-        this.votingOpen = true
-      } finally {
-        this.configLoaded = true
-      }
-    },
-
     async submitVote(telegram: string, rankings: VoteRanking[]) {
-      if (!this.votingOpen) {
+      const configStore = useConfigStore()
+
+      if (!configStore.votingOpen) {
         throw new VoteError('La votación está cerrada.', 'voting_closed')
       }
 
       const normalized = normalizeTelegram(telegram)
       const voteRef = doc(db, 'votes', normalized)
+      const resolvedRankings = normalizeRankings(rankings, configStore.gameAliases)
 
       try {
         const existing = await getDoc(voteRef)
@@ -49,7 +37,7 @@ export const useVotesStore = defineStore('votes', {
 
         const vote: Vote = {
           telegram: formatTelegram(telegram),
-          rankings,
+          rankings: resolvedRankings,
           createdAt: serverTimestamp(),
         }
 

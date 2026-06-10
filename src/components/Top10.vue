@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useConfigStore } from '@/stores/config'
 import { useGamesStore } from '@/stores/games'
 import { VoteError, useVotesStore } from '@/stores/votes'
 import type { Game } from '@/interfaces/game'
 import type { VoteRanking } from '@/interfaces/vote'
+import { resolveGameId } from '@/utils/gameAliases'
 import { pointsForPosition, POSITIONS } from '@/utils/scoring'
 import { formatTelegram, isValidTelegram } from '@/utils/telegram'
 
 type Step = 'vote' | 'confirm' | 'telegram' | 'success'
 
+const configStore = useConfigStore()
 const gamesStore = useGamesStore()
 const votesStore = useVotesStore()
 
@@ -20,21 +23,23 @@ const errorMessage = ref('')
 
 const positions = Array.from({ length: POSITIONS }, (_, index) => index + 1)
 
-const selectedGameIds = computed(() =>
-  rankings.value.filter((game): game is Game => game !== null).map((game) => game.id),
+const canonicalSelectedIds = computed(() =>
+  rankings.value
+    .filter((game): game is Game => game !== null)
+    .map((game) => resolveGameId(game.id, configStore.gameAliases)),
 )
 
 const isRankingComplete = computed(() => rankings.value.every((game) => game !== null))
 
-const duplicateGameIds = computed(() => {
+const duplicateCanonicalIds = computed(() => {
   const counts = new Map<number, number>()
-  for (const id of selectedGameIds.value) {
+  for (const id of canonicalSelectedIds.value) {
     counts.set(id, (counts.get(id) ?? 0) + 1)
   }
   return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id))
 })
 
-const hasDuplicates = computed(() => duplicateGameIds.value.size > 0)
+const hasDuplicates = computed(() => duplicateCanonicalIds.value.size > 0)
 
 const canContinueToConfirm = computed(() => isRankingComplete.value && !hasDuplicates.value)
 
@@ -65,15 +70,16 @@ const telegramError = computed(() => {
 
 function gamesForPosition(index: number) {
   const currentGame = rankings.value[index]
-  const otherSelectedIds = new Set(
+  const otherCanonicalIds = new Set(
     rankings.value
       .filter((game, gameIndex) => game !== null && gameIndex !== index)
-      .map((game) => game!.id),
+      .map((game) => resolveGameId(game!.id, configStore.gameAliases)),
   )
 
-  return gamesStore.games.filter(
-    (game) => game.id === currentGame?.id || !otherSelectedIds.has(game.id),
-  )
+  return gamesStore.selectableGames.filter((game) => {
+    const canonicalId = resolveGameId(game.id, configStore.gameAliases)
+    return game.id === currentGame?.id || !otherCanonicalIds.has(canonicalId)
+  })
 }
 
 function gameLabel(game: Game) {
@@ -124,7 +130,7 @@ const stepLabel = computed(() => {
 })
 
 onMounted(() => {
-  votesStore.loadVotingConfig()
+  configStore.load()
 })
 </script>
 
@@ -133,16 +139,16 @@ onMounted(() => {
     class="page-container"
     :class="{
       'page-container--with-footer':
-        step !== 'success' && votesStore.configLoaded && votesStore.votingOpen,
+        step !== 'success' && configStore.loaded && configStore.votingOpen,
     }"
     max-width="800"
   >
-    <v-card v-if="!votesStore.configLoaded" class="pa-6">
+    <v-card v-if="!configStore.loaded" class="pa-6">
       <v-progress-linear indeterminate color="primary" />
       <p class="text-center mt-4 text-medium-emphasis">Cargando votación...</p>
     </v-card>
 
-    <template v-else-if="!votesStore.votingOpen">
+    <template v-else-if="!configStore.votingOpen">
       <v-alert type="warning" variant="tonal" title="Votación cerrada">
         La votación no está abierta en este momento.
       </v-alert>
@@ -213,7 +219,12 @@ onMounted(() => {
               hide-details
               density="comfortable"
               class="vote-row__input"
-              :error="rankings[index] !== null && duplicateGameIds.has(rankings[index]!.id)"
+              :error="
+                rankings[index] !== null &&
+                duplicateCanonicalIds.has(
+                  resolveGameId(rankings[index]!.id, configStore.gameAliases),
+                )
+              "
             />
           </div>
         </div>
