@@ -5,7 +5,7 @@ import { onMounted } from 'vue'
 onMounted(() => {
   const today = new Date()
   if (today.getMonth() === 5 && today.getDate() === 10 && today.getFullYear() === 2026) {
-    window.confetti()
+    ;(window as any).confetti()
   }
 })
 </script>
