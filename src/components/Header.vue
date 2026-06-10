@@ -2,7 +2,7 @@
   <header class="app-header">
     <router-link to="/" class="app-header__brand">
       <img src="/profile.jpg" alt="AQSJ Top" class="app-header__logo" />
-      <span class="app-header__title">AQSJ Top</span>
+      <span class="app-header__title">{{ title }}</span>
     </router-link>
 
     <nav class="app-header__nav d-none d-md-flex">
@@ -21,13 +21,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
+const title = ref('AQSJ Top')
 
 const isVoteActive = computed(() => route.path === '/')
 const isResultsActive = computed(() => route.path === '/resultados')
+
+onMounted(() => {
+  const today = new Date()
+  if (today.getMonth() === 5 && today.getDate() === 10 && today.getFullYear() === 2026) {
+    title.value = 'CUMPLEAÑOS DEL AMIIISIMO'
+  }
+})
 </script>
 
 <style scoped>
